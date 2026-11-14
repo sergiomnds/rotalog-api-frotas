@@ -1,6 +1,8 @@
 package com.rotalog.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -12,22 +14,22 @@ import java.util.Map;
 
 /**
  * NotificacaoClient - HTTP client for api-notificacoes
- * 
- * FIXME: URL hardcoded
+ *
  * FIXME: Sem circuit breaker
  * FIXME: Sem retry logic
- * FIXME: Sem timeout configurável
- * FIXME: RestTemplate instanciado manualmente em vez de ser Bean
  */
 @Slf4j
 @Component
 public class NotificacaoClient {
 
-    // FIXME: URL hardcoded - deveria estar em application.properties
-    private static final String NOTIFICACAO_API_URL = "http://localhost:5000";
+    private final RestTemplate restTemplate;
+    private final String notificacaoApiUrl;
 
-    // FIXME: RestTemplate criado manualmente - deveria ser @Bean injetado
-    private final RestTemplate restTemplate = new RestTemplate();
+    public NotificacaoClient(@Qualifier("notificacaoRestTemplate") RestTemplate restTemplate,
+                             @Value("${rotalog.api.notificacoes.url:http://localhost:5000}") String baseUrl) {
+        this.restTemplate = restTemplate;
+        this.notificacaoApiUrl = baseUrl + "/api/notificacoes";
+    }
 
     /**
      * Envia notificação para api-notificacoes
@@ -50,7 +52,7 @@ public class NotificacaoClient {
 
             HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
 
-            String url = NOTIFICACAO_API_URL + "/api/notificacoes";
+            String url = notificacaoApiUrl;
             log.info("Enviando notificação para {}: tipo={}, destinatario={}", url, tipo, destinatario);
 
             restTemplate.postForEntity(url, request, String.class);
@@ -83,7 +85,7 @@ public class NotificacaoClient {
 
             HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
 
-            String url = NOTIFICACAO_API_URL + "/api/notificacoes";
+            String url = notificacaoApiUrl;
             restTemplate.postForEntity(url, request, String.class);
         } catch (Exception e) {
             log.error("Erro ao enviar SMS: {}", e.getMessage());

@@ -1,6 +1,9 @@
 package com.rotalog.repository;
 
+import com.rotalog.domain.StatusVeiculo;
 import com.rotalog.domain.Veiculo;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,7 +24,9 @@ public interface VeiculoRepository extends JpaRepository<Veiculo, Long> {
 
     Optional<Veiculo> findByPlaca(String placa);
 
-    List<Veiculo> findByStatus(String status);
+    Page<Veiculo> findByStatus(StatusVeiculo status, Pageable pageable);
+
+    long countByStatus(StatusVeiculo status);
 
     // FIXME: Query nativa quando poderia ser derived query
     @Query(value = "SELECT * FROM veiculos WHERE quilometragem > :km", nativeQuery = true)
@@ -30,7 +35,7 @@ public interface VeiculoRepository extends JpaRepository<Veiculo, Long> {
     // FIXME: Sem paginação - pode retornar milhares de registros
     List<Veiculo> findByModeloContainingIgnoreCase(String modelo);
 
-    @Query("SELECT v FROM Veiculo v WHERE v.status = 'ATIVO' AND v.quilometragem > :limite")
+    @Query("SELECT v FROM Veiculo v WHERE v.status = com.rotalog.domain.StatusVeiculo.ATIVO AND v.quilometragem > :limite")
     List<Veiculo> findVeiculosAtivosComQuilometragemAlta(@Param("limite") Long limite);
 
     // TODO: Adicionar query para veículos que precisam de manutenção

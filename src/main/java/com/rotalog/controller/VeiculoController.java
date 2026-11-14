@@ -1,198 +1,112 @@
 package com.rotalog.controller;
 
 import com.rotalog.domain.Veiculo;
+import com.rotalog.dto.EstatisticasFrotaResponse;
 import com.rotalog.dto.VeiculoRequest;
+import com.rotalog.dto.VeiculoResponse;
+import com.rotalog.service.VeiculoEstatisticasService;
 import com.rotalog.service.VeiculoService;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
- * VeiculoController - REST controller para gerenciamento de veículos
- * 
- * FIXME: Sem tratamento global de exceções (@ControllerAdvice)
- * FIXME: Sem CORS configurado
- * FIXME: Sem Swagger/OpenAPI
- * FIXME: Sem HATEOAS
- * FIXME: Retornando entidade diretamente em vez de DTO de resposta
+ * VeiculoController - REST controller para gerenciamento de veículos.
+ * Erros são traduzidos em HTTP pelo {@link GlobalExceptionHandler}.
+ *
+ * FIXME: Sem @Valid no request body
+ * FIXME: Sem URI no header Location
  */
-@Slf4j
 @RestController
 @RequestMapping("/veiculos")
+@RequiredArgsConstructor
 public class VeiculoController {
 
-    @Autowired // FIXME: deveria usar injeção por construtor
-    private VeiculoService veiculoService;
+    private static final String HEADER_TOTAL = "X-Total-Count";
+    private static final String HEADER_PAGINAS = "X-Total-Pages";
+
+    private final VeiculoService veiculoService;
+    private final VeiculoEstatisticasService estatisticasService;
 
     /**
-     * Listar todos os veículos
-     * 
-     * FIXME: Sem paginação
-     * FIXME: Retorna entidade diretamente
+     * Lista veículos. O corpo continua sendo um array; a paginação é controlada por
+     * ?page=0&size=100&sort=id e o total vem nos headers X-Total-Count e X-Total-Pages.
      */
     @GetMapping
-    public ResponseEntity<List<Veiculo>> listarTodos() {
-        List<Veiculo> veiculos = veiculoService.listarTodos();
-        return ResponseEntity.ok(veiculos);
+    public ResponseEntity<List<VeiculoResponse>> listarTodos(
+            @PageableDefault(size = 100, sort = "id") Pageable pageable) {
+        return paginaComoLista(veiculoService.listarTodos(pageable));
     }
 
-    /**
-     * Buscar veículo por ID
-     */
     @GetMapping("/{id}")
-    public ResponseEntity<?> buscarPorId(@PathVariable Long id) {
-        try {
-            Veiculo veiculo = veiculoService.buscarPorId(id);
-            return ResponseEntity.ok(veiculo);
-        } catch (RuntimeException e) {
-            // FIXME: Tratamento de erro manual - deveria usar @ControllerAdvice
-            Map<String, String> error = new HashMap<>();
-            error.put("erro", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-        }
+    public ResponseEntity<VeiculoResponse> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(VeiculoResponse.from(veiculoService.buscarPorId(id)));
     }
 
-    /**
-     * Buscar veículo por placa
-     */
     @GetMapping("/placa/{placa}")
-    public ResponseEntity<?> buscarPorPlaca(@PathVariable String placa) {
-        try {
-            Veiculo veiculo = veiculoService.buscarPorPlaca(placa);
-            return ResponseEntity.ok(veiculo);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("erro", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-        }
+    public ResponseEntity<VeiculoResponse> buscarPorPlaca(@PathVariable String placa) {
+        return ResponseEntity.ok(VeiculoResponse.from(veiculoService.buscarPorPlaca(placa)));
     }
 
-    /**
-     * Listar veículos por status
-     */
     @GetMapping("/status/{status}")
-    public ResponseEntity<?> listarPorStatus(@PathVariable String status) {
-        try {
-            List<Veiculo> veiculos = veiculoService.obterVeiculosPorStatus(status);
-            return ResponseEntity.ok(veiculos);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("erro", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
+    public ResponseEntity<List<VeiculoResponse>> listarPorStatus(
+            @PathVariable String status,
+            @PageableDefault(size = 100, sort = "id") Pageable pageable) {
+        return paginaComoLista(veiculoService.obterVeiculosPorStatus(status, pageable));
     }
 
-    /**
-     * Registrar novo veículo
-     * 
-     * FIXME: Sem @Valid no request body
-     * FIXME: Sem URI no header Location
-     */
     @PostMapping
-    public ResponseEntity<?> registrarVeiculo(@RequestBody VeiculoRequest request) {
-        try {
-            Veiculo veiculo = veiculoService.registrarVeiculo(
-                request.getPlaca(),
-                request.getModelo(),
-                request.getAnoFabricacao()
-            );
-            return ResponseEntity.status(HttpStatus.CREATED).body(veiculo);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("erro", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
+    public ResponseEntity<VeiculoResponse> registrarVeiculo(@RequestBody VeiculoRequest request) {
+        Veiculo veiculo = veiculoService.registrarVeiculo(
+                request.getPlaca(), request.getModelo(), request.getAnoFabricacao());
+        return ResponseEntity.status(HttpStatus.CREATED).body(VeiculoResponse.from(veiculo));
     }
 
-    /**
-     * Atualizar veículo
-     * 
-     * FIXME: Sem @Valid
-     * FIXME: Sem verificação de campos nulos
-     */
     @PutMapping("/{id}")
-    public ResponseEntity<?> atualizarVeiculo(@PathVariable Long id, @RequestBody VeiculoRequest request) {
-        try {
-            Veiculo veiculo = veiculoService.atualizarVeiculo(
-                id,
-                request.getModelo(),
-                request.getAnoFabricacao(),
-                request.getQuilometragem()
-            );
-            return ResponseEntity.ok(veiculo);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("erro", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
+    public ResponseEntity<VeiculoResponse> atualizarVeiculo(@PathVariable Long id,
+                                                            @RequestBody VeiculoRequest request) {
+        Veiculo veiculo = veiculoService.atualizarVeiculo(
+                id, request.getModelo(), request.getAnoFabricacao(), request.getQuilometragem());
+        return ResponseEntity.ok(VeiculoResponse.from(veiculo));
     }
 
-    /**
-     * Atualizar quilometragem
-     */
     @PatchMapping("/{id}/quilometragem")
-    public ResponseEntity<?> atualizarQuilometragem(@PathVariable Long id, @RequestBody Map<String, Long> body) {
-        try {
-            Long quilometragem = body.get("quilometragem");
-            if (quilometragem == null) {
-                Map<String, String> error = new HashMap<>();
-                error.put("erro", "Campo 'quilometragem' é obrigatório");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-            }
-            Veiculo veiculo = veiculoService.atualizarQuilometragem(id, quilometragem);
-            return ResponseEntity.ok(veiculo);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("erro", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
+    public ResponseEntity<VeiculoResponse> atualizarQuilometragem(@PathVariable Long id,
+                                                                  @RequestBody Map<String, Long> body) {
+        Veiculo veiculo = veiculoService.atualizarQuilometragem(id, body.get("quilometragem"));
+        return ResponseEntity.ok(VeiculoResponse.from(veiculo));
     }
 
-    /**
-     * Desativar veículo
-     */
     @PatchMapping("/{id}/desativar")
-    public ResponseEntity<?> desativarVeiculo(@PathVariable Long id) {
-        try {
-            Veiculo veiculo = veiculoService.desativarVeiculo(id);
-            return ResponseEntity.ok(veiculo);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("erro", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-        }
+    public ResponseEntity<VeiculoResponse> desativarVeiculo(@PathVariable Long id) {
+        return ResponseEntity.ok(VeiculoResponse.from(veiculoService.desativarVeiculo(id)));
     }
 
-    /**
-     * Reativar veículo
-     */
     @PatchMapping("/{id}/reativar")
-    public ResponseEntity<?> reativarVeiculo(@PathVariable Long id) {
-        try {
-            Veiculo veiculo = veiculoService.reativarVeiculo(id);
-            return ResponseEntity.ok(veiculo);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("erro", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-        }
+    public ResponseEntity<VeiculoResponse> reativarVeiculo(@PathVariable Long id) {
+        return ResponseEntity.ok(VeiculoResponse.from(veiculoService.reativarVeiculo(id)));
     }
 
-    /**
-     * Obter estatísticas da frota
-     * 
-     * FIXME: Retorna String JSON em vez de objeto tipado
-     */
     @GetMapping("/estatisticas")
-    public ResponseEntity<String> obterEstatisticas() {
-        // FIXME: Chamando método com typo no nome
-        String stats = veiculoService.obterEstatisticasFreita();
-        return ResponseEntity.ok(stats);
+    public ResponseEntity<EstatisticasFrotaResponse> obterEstatisticas() {
+        return ResponseEntity.ok(estatisticasService.obterEstatisticas());
+    }
+
+    private ResponseEntity<List<VeiculoResponse>> paginaComoLista(Page<Veiculo> pagina) {
+        List<VeiculoResponse> corpo = pagina.getContent().stream()
+                .map(VeiculoResponse::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok()
+                .header(HEADER_TOTAL, String.valueOf(pagina.getTotalElements()))
+                .header(HEADER_PAGINAS, String.valueOf(pagina.getTotalPages()))
+                .body(corpo);
     }
 }

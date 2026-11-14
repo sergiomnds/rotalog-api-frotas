@@ -39,8 +39,9 @@ public class Veiculo {
     @Column(name = "quilometragem")
     private Long quilometragem;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private String status; // ATIVO, INATIVO, MANUTENCAO - FIXME: deveria ser enum
+    private StatusVeiculo status;
 
     @Column(name = "data_cadastro")
     private LocalDateTime dataCadastro;
@@ -48,7 +49,11 @@ public class Veiculo {
     @Column(name = "data_atualizacao")
     private LocalDateTime dataAtualizacao;
 
+    /** Controle de concorrência otimista: atualizações simultâneas do mesmo veículo não se sobrescrevem. */
+    @Version
+    @Column(name = "versao", nullable = false)
+    private Long versao;
+
     // FIXME: Sem @PrePersist e @PreUpdate para datas automáticas
     // FIXME: Sem toString, equals, hashCode
-    // FIXME: Status deveria ser enum
 }

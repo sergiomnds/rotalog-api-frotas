@@ -1,6 +1,7 @@
 package com.rotalog.service;
 
 import com.rotalog.domain.Manutencao;
+import com.rotalog.domain.StatusVeiculo;
 import com.rotalog.domain.Veiculo;
 import com.rotalog.repository.ManutencaoRepository;
 import com.rotalog.repository.VeiculoRepository;
@@ -31,6 +32,9 @@ public class ManutencaoService {
 
     @Autowired
     private NotificacaoClient notificacaoClient;
+
+    @Autowired
+    private VeiculoService veiculoService;
 
     public List<Manutencao> listarTodas() {
         return manutencaoRepository.findAll(); // FIXME: sem paginação
@@ -112,9 +116,7 @@ public class ManutencaoService {
         Veiculo veiculo = veiculoRepository.findById(manutencao.getVeiculoId())
                 .orElse(null);
         if (veiculo != null) {
-            veiculo.setStatus("MANUTENCAO");
-            veiculo.setDataAtualizacao(LocalDateTime.now());
-            veiculoRepository.save(veiculo); // FIXME: sem transação com a manutenção
+            veiculoService.alterarStatus(veiculo, StatusVeiculo.MANUTENCAO); // FIXME: sem transação com a manutenção
         }
 
         return manutencaoRepository.save(manutencao);
@@ -139,9 +141,7 @@ public class ManutencaoService {
         Veiculo veiculo = veiculoRepository.findById(manutencao.getVeiculoId())
                 .orElse(null);
         if (veiculo != null) {
-            veiculo.setStatus("ATIVO");
-            veiculo.setDataAtualizacao(LocalDateTime.now());
-            veiculoRepository.save(veiculo); // FIXME: sem transação
+            veiculoService.alterarStatus(veiculo, StatusVeiculo.ATIVO); // FIXME: sem transação
         }
 
         Manutencao concluida = manutencaoRepository.save(manutencao);
@@ -171,10 +171,8 @@ public class ManutencaoService {
 
         // Se veículo estava em manutenção, reativar
         Veiculo veiculo = veiculoRepository.findById(manutencao.getVeiculoId()).orElse(null);
-        if (veiculo != null && "MANUTENCAO".equals(veiculo.getStatus())) {
-            veiculo.setStatus("ATIVO");
-            veiculo.setDataAtualizacao(LocalDateTime.now());
-            veiculoRepository.save(veiculo);
+        if (veiculo != null && StatusVeiculo.MANUTENCAO == veiculo.getStatus()) {
+            veiculoService.alterarStatus(veiculo, StatusVeiculo.ATIVO);
         }
 
         log.info("Manutenção cancelada: id={}", manutencaoId);
