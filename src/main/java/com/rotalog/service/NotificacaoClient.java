@@ -67,6 +67,34 @@ public class NotificacaoClient {
     }
 
     /**
+     * Pede à api-notificacoes o envio do e-mail de alerta de manutenção preventiva. Diferente de
+     * {@link #enviarNotificacao}, o endpoint só responde 2xx quando o e-mail foi de fato enviado (503 caso
+     * contrário), então o retorno sem exceção significa "enviado". O {@code alertaId} torna o pedido idempotente.
+     *
+     * @throws org.springframework.web.client.RestClientException falha de conexão, timeout, 4xx ou 5xx
+     */
+    public void enviarAlertaManutencao(Long alertaId, Long veiculoId, String placa, String motivo,
+                                       String destinatario, String mensagem) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("alertaId", alertaId);
+        body.put("veiculoId", veiculoId);
+        body.put("placa", placa);
+        body.put("motivo", motivo);
+        body.put("destinatario", destinatario);
+        body.put("mensagem", mensagem);
+
+        String url = notificacaoApiUrl + "/alertas-manutencao";
+        log.info("Enviando alerta de manutenção para {}: alertaId={}, placa={}", url, alertaId, placa);
+
+        restTemplate.postForEntity(url, new HttpEntity<>(body, headers), String.class);
+
+        log.info("Alerta de manutenção enviado: alertaId={}", alertaId);
+    }
+
+    /**
      * Envia notificação SMS
      * 
      * FIXME: Código duplicado com enviarNotificacao

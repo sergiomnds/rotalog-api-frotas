@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * ManutencaoRepository
@@ -26,6 +27,10 @@ public interface ManutencaoRepository extends JpaRepository<Manutencao, Long> {
     // FIXME: Query nativa quando poderia ser JPQL
     @Query(value = "SELECT * FROM manutencoes WHERE veiculo_id = :veiculoId ORDER BY data_manutencao DESC LIMIT 1", nativeQuery = true)
     Manutencao findUltimaManutencao(@Param("veiculoId") Long veiculoId);
+
+    /** Última manutenção realizada (com data) do veículo no status informado; ignora registros sem data. */
+    Optional<Manutencao> findFirstByVeiculoIdAndStatusAndDataManutencaoIsNotNullOrderByDataManutencaoDesc(
+            Long veiculoId, String status);
 
     // TODO: Adicionar query para manutenções pendentes por período
     // TODO: Adicionar paginação
